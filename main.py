@@ -5,7 +5,7 @@ The picture itself was drawn and checked while the entry was built,
 so this program has nothing to generate: it moves the finished
 bytes into place. It reads entry.png from the same directory as
 this script, confirms the bytes open with the PNG signature, writes
-them to /output/entry.png through a temporary file, and prints the
+them directly to entry.png in the output directory, and prints the
 size and SHA-256 of what it wrote. Two runs write identical bytes.
 """
 
@@ -13,10 +13,11 @@ import hashlib
 import os
 import struct
 import sys
-import tempfile
 
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
-OUTPUT_PATH = os.path.join(os.sep, "output", "entry.png")
+OUTPUT_PATH = os.path.join(
+    os.environ.get("MAKEFUN_OUTPUT_DIR", "/output"), "entry.png"
+)
 
 
 def die(message):
@@ -46,21 +47,12 @@ def png_dimensions(data):
 def write_output(destination, data):
     folder = os.path.dirname(destination)
     os.makedirs(folder, exist_ok=True)
-    tmp = None
     try:
-        with tempfile.NamedTemporaryFile(mode="wb", dir=folder, delete=False) as handle:
-            tmp = handle.name
+        with open(destination, "wb") as handle:
             handle.write(data)
             handle.flush()
             os.fsync(handle.fileno())
-        os.replace(tmp, destination)
-        tmp = None
     except OSError as error:
-        if tmp is not None:
-            try:
-                os.unlink(tmp)
-            except OSError:
-                pass
         die("cannot write {0}: {1}".format(destination, error))
 
 
